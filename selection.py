@@ -40,6 +40,7 @@
 # HV: * time to commit - added some more basic stuff
 #
 import jenums, hvutil, copy
+from functools import reduce
 
 class selection:
     def __init__(self):
@@ -78,7 +79,7 @@ class selection:
 
     def selectTimeRange(self, timeranges):
         self.timeRange     = copy.deepcopy(timeranges)
-        self.timeRangeTaql = "(" + " OR ".join(map(lambda (s,e): "(TIME>={0:.7f} && TIME<={1:.7f})".format(s,e), self.timeRange)) + ")"
+        self.timeRangeTaql = "(" + " OR ".join(["(TIME>={0:.7f} && TIME<={1:.7f})".format(s_e[0],s_e[1]) for s_e in self.timeRange]) + ")"
 
     # the ddSelection as Human Readable Format. Needs a 
     # polarization map to unmap indices to string
@@ -98,32 +99,33 @@ class selection:
         # such that we end up with 
         #    ddSelection = [(fs, [sb], pol, [prods]), ....]
         # once more dict + set to the rescue
-        def group_sb(acc, (f, s, p, prods)):
+        def group_sb(acc, xxx_todo_changeme):
+            (f, s, p, prods) = xxx_todo_changeme
             key = (f, p, str(prods))
             acc[key].add(s) if key in acc else acc.update({key:set([s])})
             return acc
-        hrf = map(lambda ((f,p,ps), v): (f,list(v),p,eval(ps)), \
-                  reduce(group_sb, self.ddSelection, {}).iteritems())
+        hrf = [(f_p_ps_v[0][0],list(f_p_ps_v[1]),f_p_ps_v[0][1],eval(f_p_ps_v[0][2])) for f_p_ps_v in iter(reduce(group_sb, self.ddSelection, {}).items())]
 
         # each entry can already be listed as one, abbreviated, line Let's see
         # if there are multiple FQs who have the same [sb], pol, [prods]
         # selection and group them together. Again: dict + set to the rescue
-        def group_fq(acc, (f,s,p,l)):
+        def group_fq(acc, xxx_todo_changeme1):
+            (f,s,p,l) = xxx_todo_changeme1
             key = (str(s), p, str(l))
             acc[key].add(f) if key in acc else acc.update({key:set([f])})
             return acc
-        hrf = map(lambda ((ss, p, ps), v): (list(v), eval(ss), p, eval(ps)), \
-                  reduce(group_fq, hrf, {}).iteritems())
+        hrf = [(list(ss_p_ps_v[1]), eval(ss_p_ps_v[0][0]), ss_p_ps_v[0][1], eval(ss_p_ps_v[0][2])) for ss_p_ps_v in iter(reduce(group_fq, hrf, {}).items())]
 
         # now we can produce the output
-        def fmter( (f,s,p,l) ):
+        def fmter(xxx_todo_changeme2 ):
+            (f,s,p,l) = xxx_todo_changeme2
             return "{0}/{1}/{2}:{3}".format( \
                     hvutil.range_repr(hvutil.find_consecutive_ranges(f)), \
                     hvutil.range_repr(hvutil.find_consecutive_ranges(s)), \
                     p, \
                     ",".join(hvutil.itemgetter(*l)(pMap.getPolarizations(p))) \
                     )
-        return map(fmter, hrf)
+        return list(map(fmter, hrf))
 
     def selectionTaQL(self):
         # If an explicit TaQL string is set, return that one
@@ -132,15 +134,14 @@ class selection:
 
         # No? Ok, build the query
         return reduce(lambda acc, x: (acc+" AND "+x if acc else x) if x else acc, \
-                      filter(lambda z: z is not None, \
-                             [self.baselinesTaql, self.sourcesTaql, self.timeRangeTaql, self.ddSelectionTaql]), \
+                      [z for z in [self.baselinesTaql, self.sourcesTaql, self.timeRangeTaql, self.ddSelectionTaql] if z is not None], \
                       "")
 
     def mkCPPNewplot(self):
         # return a list of True/False values for all plot axes in the order the C++
         # expects them
-        return map(lambda x: self.newPlot[x], [jenums.Axes.P, jenums.Axes.CH, jenums.Axes.SB,jenums.Axes.FQ,
-                                               jenums.Axes.BL, jenums.Axes.SRC, jenums.Axes.TIME, jenums.Axes.TYPE])
+        return [self.newPlot[x] for x in [jenums.Axes.P, jenums.Axes.CH, jenums.Axes.SB,jenums.Axes.FQ,
+                                               jenums.Axes.BL, jenums.Axes.SRC, jenums.Axes.TIME, jenums.Axes.TYPE]]
 
 
 

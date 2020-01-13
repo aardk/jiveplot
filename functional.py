@@ -1,20 +1,21 @@
-from __future__ import print_function
+
 from functools  import partial
 from itertools  import product, repeat
 from operator   import truth, contains, eq, is_not, attrgetter, itemgetter, methodcaller, __add__, is_
+from functools import reduce
 
 # everybody SHOULD love function composition :-)
 compose     = lambda *fns   : (lambda x: reduce(lambda acc, f: f(acc), reversed(fns), x))
 choice      = lambda p, t, f: (lambda x: t(x) if p(x) else f(x))  # branch
 choice_kw   = lambda p, t, f: (lambda x, **kwargs: t(x, **kwargs) if p(x, **kwargs) else f(x, **kwargs))  # branch
 ylppa       = lambda *args  : (lambda f: f(*args))                # ylppa is 'apply' in reverse ...
-combine     = lambda f, *fns: (lambda x: f(*map(ylppa(x), fns)))  # f( fn[0](x), fn[1](x), ... )
+combine     = lambda f, *fns: (lambda x: f(*list(map(ylppa(x), fns))))  # f( fn[0](x), fn[1](x), ... )
 swap_args   = lambda f      : (lambda a, b, *args, **kwargs: f(b, a, *args, **kwargs))
 logic_or    = lambda x, y   : x or y                              # operator.__or__ / __and__ are /bitwise/ ops!
 logic_and   = lambda x, y   : x and y                             #               ..
 const       = lambda x      : (lambda _: x)                       # return the same value irrespective of input
 between     = lambda a, b   : (lambda x: a<=x<b)                  # missing from module 'operator'?
-m_itemgetter= lambda *idx   : (lambda x: map(x.__getitem__, idx)) # _ALWAYS_ returns [...], irrespective of #-of-indices
+m_itemgetter= lambda *idx   : (lambda x: list(map(x.__getitem__, idx))) # _ALWAYS_ returns [...], irrespective of #-of-indices
                                                                   #   for laughs, look up 'operator.itemgetter()' => 3 (three!)
                                                                   #   different types of return type depending on arguments! FFS!
 # reorder_args: call f with the arguments indicated by idx:
@@ -32,8 +33,8 @@ maybe_set   = lambda a, v          : choice(const(is_not_none(v)), setattr_(a, v
 identity    = lambda x, *a, **kw   : x
 #mk_query    = lambda c, t, w, *args: "SELECT {0} FROM {1} WHERE {2}{3}".format(c, t, w, "" if not args else " and "+args[0])
 do_update   = lambda x, y          : x.update(y) or x
-d_filter    = lambda keys          : (lambda d: dict(((k,v) for k,v in d.iteritems() if k in keys)))
-d_filter_n  = lambda keys          : (lambda d: dict(((k,v) for k,v in d.iteritems() if k not in keys)))
+d_filter    = lambda keys          : (lambda d: dict(((k,v) for k,v in d.items() if k in keys)))
+d_filter_n  = lambda keys          : (lambda d: dict(((k,v) for k,v in d.items() if k not in keys)))
 # expose the print function as, well, a function
 printf      = print
 #collectf    = lambda x, y : x.collectfn(y)

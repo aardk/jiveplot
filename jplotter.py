@@ -396,9 +396,10 @@
 import copy, re, math, operator, itertools, plotiterator, ppgplot, datetime, os, subprocess, numpy, parsers, imp, time
 import jenums, selection, ms2mappings, plots, ms2util, hvutil, pyrap.quanta, sys, pydoc, collections, gencolors, functools
 from   functional import compose
+from functools import reduce
 
 if '-d' in sys.argv:
-    print "PPGPLOT=",repr(ppgplot)
+    print("PPGPLOT=",repr(ppgplot))
 
 # Monkeypatch ppgplot if it don't seem to have pgqwin()
 if not hasattr(ppgplot, 'pgqwin'):
@@ -452,10 +453,10 @@ class jplotter:
                 mo = rxYesNo.match(x)
                 if mo:
                     return bool( mo.group('yes') )
-                raise RuntimeError, "{0} is not a valid boolean expression".format(x)
+                raise RuntimeError("{0} is not a valid boolean expression".format(x))
             (arguments, options) = hvutil.split_optarg(*args, **{'unique':as_bool, 'readflags':as_bool})
             if len(arguments)>1:
-                raise RuntimeError, "ms() takes only one or no parameters"
+                raise RuntimeError("ms() takes only one or no parameters")
             # attempt to open the measurement set
             try:
                 # Update our defaults with what the user specified on the command line
@@ -466,26 +467,26 @@ class jplotter:
                 self.selection = selection.selection()
                 self.readFlags = options.get('readflags', True)
             except Exception as E:
-                print E
+                print(E)
         if self.msname:
             m = self.mappings
-            print "ms: Current MS is '{0}' containing {1} rows of {2} data for {3} [{4}]".format( \
-                    self.msname, m.numRows, m.domain.domain, m.project, m.domain.column)
+            print("ms: Current MS is '{0}' containing {1} rows of {2} data for {3} [{4}]".format( \
+                    self.msname, m.numRows, m.domain.domain, m.project, m.domain.column))
         else:
-            print "ms: no MS opened yet"
+            print("ms: no MS opened yet")
         return True
 
     def uniqueMetaData(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "This command supports only one argument"
+                raise RuntimeError("This command supports only one argument")
             if args[0] in "tT":
                 self.unique = True
             elif args[0] in "fF":
                 self.unique = False
             else:
                 self.unique = bool(int(args[0]))
-        print "unique meta data: ",self.unique
+        print("unique meta data: ",self.unique)
 
     def haveMS(self):
         return self.msname
@@ -493,38 +494,38 @@ class jplotter:
     def listScans(self, *args):
         pfx = "listScans:"
         if not self.msname:
-            print pfx,"No MS loaded yet"
+            print(pfx,"No MS loaded yet")
             return None
         if not self.scanlist:
-            print pfx, "No scans (yet) - have you run the 'indexr' task?"
+            print(pfx, "No scans (yet) - have you run the 'indexr' task?")
             return None
         # print list of scan id's + text
         lines = "\n".join( map(str, self.scanlist) )
         if args and '-p' in args:
             pydoc.pager( lines )
         else:
-            print lines
+            print(lines)
 
     def listBaselines(self):
         pfx = "listBaselines:"
         if not self.msname:
-            print pfx,"No MS loaded yet"
+            print(pfx,"No MS loaded yet")
             return None
         mk_output(prng(pfx), self.mappings.baselineMap.baselineNames(), 80)
 
     def listFreqs(self):
         if not self.msname:
-            print "listFreqs: No MS loaded yet"
+            print("listFreqs: No MS loaded yet")
             return
         pmap   = self.mappings.polarizationMap
         smap   = self.mappings.spectralMap
         pfx    = 'listFreqs:'
         # deal with the frequency setups
         for frqid in smap.freqIds():
-            print "{0} FREQID={1} [{2}]".format(prng(pfx), frqid, smap.freqGroupName(frqid))
+            print("{0} FREQID={1} [{2}]".format(prng(pfx), frqid, smap.freqGroupName(frqid)))
             # Loop over the subbands
             for (sbidx, sb) in smap.subbandsOfFREQ(frqid):
-                print "{0}   SB{1:2d}:".format(prng(pfx), sbidx),sb.__str__(polarizationMap=self.mappings.polarizationMap)
+                print("{0}   SB{1:2d}:".format(prng(pfx), sbidx),sb.__str__(polarizationMap=self.mappings.polarizationMap))
 
     def freqIDs(self):
         if not self.msname:
@@ -553,27 +554,26 @@ class jplotter:
     def listSources(self):
         pfx = "listSources:"
         if not self.msname:
-            print pfx, "No MS loaded yet"
+            print(pfx, "No MS loaded yet")
             return None
         mk_output(prng(pfx+" "), self.mappings.fieldMap.getFields(), 80)
 
     def listAntennas(self):
         pfx = "listAntennas:"
         if not self.msname:
-            print pfx,"No MS loaded yet"
+            print(pfx,"No MS loaded yet")
             return None
-        mk_output(prng(pfx+" "), map(lambda (ant,id): "{0} ({1: >2}) ".format(ant, id),
-                                 self.mappings.baselineMap.antennas()), 80)
+        mk_output(prng(pfx+" "), ["{0} ({1: >2}) ".format(ant_id[0], ant_id[1]) for ant_id in self.mappings.baselineMap.antennas()], 80)
 
     def listTimeRange(self):
         pfx = "listTimeRange:"
         if not self.msname:
-            print pfx,"No MS loaded yet"
+            print(pfx,"No MS loaded yet")
             return None
         # call upon the mighty casa quanta to produce
         # human readable format
         tr      = self.mappings.timeRange
-        print prng(pfx),ms2util.as_time(tr.start),"->",ms2util.as_time(tr.end)," dT:"," ".join(map(lambda x: "{0:.3f}".format(x), tr.inttm))
+        print(prng(pfx),ms2util.as_time(tr.start),"->",ms2util.as_time(tr.end)," dT:"," ".join(["{0:.3f}".format(x) for x in tr.inttm]))
 
     def dataDomain(self):
         return self.mappings.domain.domain
@@ -581,7 +581,7 @@ class jplotter:
     def indexr(self):
         pfx = "indexr:"
         if not self.msname:
-            print pfx,"No MS loaded yet"
+            print(pfx,"No MS loaded yet")
             return []
         # need to remember old ms name
         lmsvar = 'indexr_lastms'
@@ -592,15 +592,15 @@ class jplotter:
             # need to recompute scan list.
             # From indexr() we only get field_ids in the scan object
             # so we immediately transform them into field names
-            print "Running indexr. This may take some time."
+            print("Running indexr. This may take some time.")
             unmapFLD = self.mappings.fieldMap.field
             def unmapFLDfn(x):
                 x.field = unmapFLD(x.field_id)
                 return x
-            self.scanlist = map(unmapFLDfn, ms2util.indexr(self.msname))
+            self.scanlist = list(map(unmapFLDfn, ms2util.indexr(self.msname)))
             # and store the current ms
             self.indexr_lastms = CP(self.msname)
-        print "indexr: found ",len(self.scanlist)," scans. (use 'listr' to inspect)"
+        print("indexr: found ",len(self.scanlist)," scans. (use 'listr' to inspect)")
         return self.scanlist
 
     ## display or select time-range + source via scan
@@ -660,8 +660,9 @@ class jplotter:
 
                 # and we must construct the timerange list.
                 # also compress the time ranges; if there are overlapping regions, join them
-                def reductor(acc, (s, e)):
+                def reductor(acc, xxx_todo_changeme4):
                     # if current start time <= previous end-time we has an overlaps
+                    (s, e) = xxx_todo_changeme4
                     if s<= acc[-1][1]:
                         acc[-1] = (acc[-1][0], e)
                     else:
@@ -675,9 +676,9 @@ class jplotter:
                 
         # Display selected scans
         if sel_.scanSel:
-            print "\n".join(map(str, sel_.scanSel))
+            print("\n".join(map(str, sel_.scanSel)))
         else:
-            print "No scans selected{0}".format( "" if self.scanlist else " (and could not have; 'indexr' must be run first)" )
+            print("No scans selected{0}".format( "" if self.scanlist else " (and could not have; 'indexr' must be run first)" ))
 
     ##
     ## Here come interesting API methods
@@ -710,7 +711,7 @@ class jplotter:
 
                 if sel_.ddSelection:
                     # ddSelection is [(fq, sb, pol, [idx, ..]), ... ]
-                    nch = set(map(lambda (f, s, p, l): map_.numchanOfFREQ_SB(f, s), sel_.ddSelection))
+                    nch = set([map_.numchanOfFREQ_SB(f_s_p_l[0], f_s_p_l[1]) for f_s_p_l in sel_.ddSelection])
                     if len(nch)==1:
                         nchan = list(nch)[0]
                 else:
@@ -718,7 +719,7 @@ class jplotter:
                     # freqids have the same number of channels. If they do we can easily
                     # use that "nch" as symbolic value
                     chset = reduce( \
-                        lambda acc, fid: acc | set(map(lambda spw: map_.numchanOfSPW(spw), map_.spectralWindows(fid))),\
+                        lambda acc, fid: acc | set([map_.numchanOfSPW(spw) for spw in map_.spectralWindows(fid)]),\
                         map_.freqIds(), \
                         set())
                     if len(chset)==1:
@@ -749,7 +750,7 @@ class jplotter:
         cstr  = "No channels selected yet"
         if self.selection.chanSel:
             cstr = hvutil.range_repr(hvutil.find_consecutive_ranges(self.selection.chanSel))
-        print "{0} {1}".format(ppfx(pfx), cstr)
+        print("{0} {1}".format(ppfx(pfx), cstr))
 
     ##
     ## Print or set the source selection
@@ -781,7 +782,7 @@ class jplotter:
                 #  Return the list of sources for which the flag is true
                 #
                 selector = lambda tuplst, selectors: \
-                        [src for (src, flag) in reduce(lambda acc, sel: map(sel, acc), selectors, tuplst) if flag]
+                        [src for (src, flag) in reduce(lambda acc, sel: list(map(sel, acc)), selectors, tuplst) if flag]
 
                 def mkselector(src):
                     srcs   = copy.deepcopy(src)
@@ -814,18 +815,18 @@ class jplotter:
                     rx = re.compile("^"+srcs+"$", re.I)
 
                     # and select only the matching sources
-                    return lambda (src, flag): (src, (flag if neg else add) if rx.match(src) else (add if neg else flag))
+                    return lambda src_flag: (src_flag[0], (src_flag[1] if neg else add) if rx.match(src_flag[0]) else (add if neg else src_flag[1]))
 
                 # now build the list of selectors, based on comma-separated source selections 
                 # and run all of them against the sourcelist
-                sel_.sources = selector([(x, False) for x in map_.fieldMap.getFields()], map(mkselector, args))
+                sel_.sources = selector([(x, False) for x in map_.fieldMap.getFields()], list(map(mkselector, args)))
 
                 # set the TaQL accordingly - if necessary
                 if len(sel_.sources)==len(map_.fieldMap.getFields()):
                     # all sources selected - no need for TaQL
                     sel_.sourcesTaql = ""
                 else:
-                    sel_.sourcesTaql = "(FIELD_ID IN {0})".format( map(map_.fieldMap.unfield, sel_.sources) )
+                    sel_.sourcesTaql = "(FIELD_ID IN {0})".format( list(map(map_.fieldMap.unfield, sel_.sources)) )
             self.dirty   = True
             # new source selection overrides scan selection
             sel_.scanSel = []
@@ -866,10 +867,10 @@ class jplotter:
                 sel_.baselines     = copy.deepcopy(map_.baselineMap.baselineNames())
                 sel_.baselinesTaql = ''
             elif args[0]=="auto" and simple:
-                sel_.baselines     = filter(lambda x: re.match(auto, x), map_.baselineMap.baselineNames())
+                sel_.baselines     = [x for x in map_.baselineMap.baselineNames() if re.match(auto, x)]
                 sel_.baselinesTaql = "(ANTENNA1==ANTENNA2)"
             elif args[0]=="cross" and simple:
-                sel_.baselines     = filter(lambda x: not re.match(auto, x), map_.baselineMap.baselineNames())
+                sel_.baselines     = [x for x in map_.baselineMap.baselineNames() if not re.match(auto, x)]
                 sel_.baselinesTaql = "(ANTENNA1!=ANTENNA2)"
             else:
                 # have to bloody do them all!
@@ -881,7 +882,7 @@ class jplotter:
                 #       name     = namestr | name "|" name
                 #       namestr  = [a-zA-Z0-9]+
                 filterer = lambda tuplst, filters: \
-                        [bl for (bl, flag) in reduce(lambda acc, filt: map(filt, acc), filters, tuplst) if flag]
+                        [bl for (bl, flag) in reduce(lambda acc, filt: list(map(filt, acc)), filters, tuplst) if flag]
 
                 # pre-compile the used regexes
                 rxp0  = re.compile(r"[\(\)]")
@@ -933,7 +934,7 @@ class jplotter:
                     #map(lambda (x,y): p("p{0}:{1}".format(x,y)), zip(range(4), [p0,p1,p2,p3]))
 
                     if not (bls==auto) and not (bls==cross) and p0 and not (p1 or p2 or p3):
-                        raise SyntaxError, "the parenthesised baseline expression {0} is invalid".format(bl)
+                        raise SyntaxError("the parenthesised baseline expression {0} is invalid".format(bl))
 
                     # Do we have "chars*" or "*chars"?
                     # note: we only really need to look at these if
@@ -962,7 +963,7 @@ class jplotter:
                         if not p0 and wc0:
                             # then it'd better be a valid wildcardexpression
                             if not wc1:
-                                raise SyntaxError, "the wildcarded baseline expression {0} is invalid".format(bl)
+                                raise SyntaxError("the wildcarded baseline expression {0} is invalid".format(bl))
                             # now only need to reverse if it was "*chars" or "chars*"
                             fstgrp = 4 if wc1.group(4) else 2
                             revbls = "{1}{0}".format(wc1.group(fstgrp), wc1.group(fstgrp+1))
@@ -989,26 +990,26 @@ class jplotter:
                         rxr = re.compile(revbls, re.I)
 
                     # and filter only the matching sources
-                    def f( (bl,flag) ):
+                    def f(xxx_todo_changeme ):
                         # only perform reverse match if it is a (physically)
                         # different rx object
+                        (bl,flag) = xxx_todo_changeme
                         m  = rx.match(bl)
                         mr = rxr.match(bl) if rxr is not rx else False
                         return (bl, (flag if neg else add) if (m or mr) else (add if neg else flag))
                     return f
                 # now build the list of filters, based on comma-separated source selections 
                 # and run all of them against the sourcelist
-                sel_.baselines  = filterer([(x, False) for x in map_.baselineMap.baselineNames()], map(mkfilter, args))
+                sel_.baselines  = filterer([(x, False) for x in map_.baselineMap.baselineNames()], list(map(mkfilter, args)))
 
                 if not sel_.baselines:
-                    print "No baselines matched your selection"
+                    print("No baselines matched your selection")
                     sel_.baselines     = None
                     sel_.baselinesTaql = ''
                 else:
                     # Now that we've selected the baselines, we must generate the TaQL to go with it
                     sel_.baselinesTaql = "((1000*ANTENNA1+ANTENNA2) IN {0})".format( \
-                        map(lambda (x,y): 1000*x + y, \
-                            map(map_.baselineMap.baselineIndex, sel_.baselines)))
+                        [1000*x_y[0] + x_y[1] for x_y in list(map(map_.baselineMap.baselineIndex, sel_.baselines))])
             self.dirty = self.dirty or (oldTaql != sel_.baselinesTaql)
         blstr = ["No baselines selected yet"]
         if sel_.baselines:
@@ -1024,7 +1025,7 @@ class jplotter:
         if not self.msname:
             return errf("No MS loaded yet")
         if len(args)>1:
-            raise RuntimeError, "Please call this method with zero or one argument"
+            raise RuntimeError("Please call this method with zero or one argument")
 
         sel_ = self.selection
         map_ = self.mappings
@@ -1042,8 +1043,9 @@ class jplotter:
                 # Sort by start time & compress; overlapping time ranges get merged
                 sel_.timeRange = sorted(l, key=operator.itemgetter(0))
 
-                def reductor(acc, (s, e)):
+                def reductor(acc, xxx_todo_changeme5):
                     # if current start time <= previous end-time we has an overlaps
+                    (s, e) = xxx_todo_changeme5
                     if s<= acc[-1][1]:
                         acc[-1] = (acc[-1][0], e)
                     else:
@@ -1057,9 +1059,9 @@ class jplotter:
 
         # and show the current timeselection
         if sel_.timeRange:
-            mk_output(ppfx(pfx),  map(lambda (s,e): "{0} -> {1}".format(ms2util.as_time(s), ms2util.as_time(e)), sel_.timeRange), 80)
+            mk_output(ppfx(pfx),  ["{0} -> {1}".format(ms2util.as_time(s_e[0]), ms2util.as_time(s_e[1])) for s_e in sel_.timeRange], 80)
         else:
-            print "{0} No timerange(s) selected yet".format(ppfx(pfx))
+            print("{0} No timerange(s) selected yet".format(ppfx(pfx)))
 
     ##
     ## Support frequency selection
@@ -1155,7 +1157,7 @@ class jplotter:
                     # depening on how many we find we know what the parts mean
                     parts = arg.split("/")
                     if len(parts)==0 or len(parts)>3:
-                        raise SyntaxError, "The frequency selection '{0}' is invalid".format(arg)
+                        raise SyntaxError("The frequency selection '{0}' is invalid".format(arg))
 
                     if len(parts)==3:
                         [fqs, sbs, pols] = parts
@@ -1167,7 +1169,7 @@ class jplotter:
                         if rxPol.match(parts[1]):
                             # assert only one FQ group
                             if spMap.nFreqId()!=1:
-                                raise RuntimeError,"There are multiple freqids so the selector '{0}' is ambiguous".format(arg)
+                                raise RuntimeError("There are multiple freqids so the selector '{0}' is ambiguous".format(arg))
                             [sbs, pols] = parts
                             fqs         = repr(spMap.freqIds()[0])
                         else:
@@ -1175,7 +1177,7 @@ class jplotter:
                     elif len(parts)==1:
                         # only subbands. Also only acceptable if only one freqid
                         if spMap.nFreqId()!=1:
-                            raise RuntimeError,"There are multiple freqids so the selector '{0}' is ambiguous".format(arg)
+                            raise RuntimeError("There are multiple freqids so the selector '{0}' is ambiguous".format(arg))
                         sbs = parts[0]
                         fqs = repr(spMap.freqIds()[0])
 
@@ -1184,20 +1186,20 @@ class jplotter:
                     # expand the selection strings to numerical values
                     if fqs:
                         if not rxRng.match(fqs):
-                            raise SyntaxError, "Invalid freqgroup selection in '{0}'".format(arg)
+                            raise SyntaxError("Invalid freqgroup selection in '{0}'".format(arg))
                         if fqs=="*":
                             fqs = spMap.freqIds()
                         else:
                             fqs = hvutil.expand_string_range(fqs)
                     if sbs:
                         if not rxRng.match(sbs):
-                            raise SyntaxError, "Invalid subband selection in '{0}'".format(arg)
+                            raise SyntaxError("Invalid subband selection in '{0}'".format(arg))
                         if sbs != "*":
                             sbs = hvutil.expand_string_range(sbs)
                     if pols:
                         polmatch = rxPol.match(pols)
                         if not polmatch:
-                            raise SyntaxError, "Invalid polarization selection in '{0}'".format(arg)
+                            raise SyntaxError("Invalid polarization selection in '{0}'".format(arg))
                         # before starting to compile the polarization regexen, we
                         # must first extract the, potential, leading polid
                         pid  = polmatch.group('polid')
@@ -1209,11 +1211,8 @@ class jplotter:
                         # (or at least, that's how we treat them).
                         # Substitute aliases with their corresponding regexes and compile
                         # them into a list of regexes
-                        pols = map(lambda x:re.compile("^"+x+"$", re.I), \
-                                 map(lambda x: \
-                                     hvutil.sub(x, [("\*", ".*"), (re.compile("P", re.I), r"(.)\\1"), \
-                                                    (re.compile("X", re.I), r"(.)(?!\\1).")]), \
-                                     pols.split(",")))
+                        pols = [re.compile("^"+x+"$", re.I) for x in [hvutil.sub(x, [("\*", ".*"), (re.compile("P", re.I), r"(.)\\1"), \
+                                                    (re.compile("X", re.I), r"(.)(?!\\1).")]) for x in pols.split(",")]]
                         # and hoopla!
                         pols = (pid, pols)
                     else:
@@ -1249,13 +1248,13 @@ class jplotter:
                         # double map())
                         def adder(x):
                             if len(x)==len(rxs):
-                                map(lambda z: map(lambda y: acc.append(y), z), x)
+                                list(map(lambda z: [acc.append(y) for y in z], x))
 
                         for fq in fqs:
                             # Dynamically expand the "all subbands for this freqid"
                             # (if selected)
                             if sbs=="*":
-                                subbands = xrange(spMap.nSubbandOfFREQ(fq))
+                                subbands = range(spMap.nSubbandOfFREQ(fq))
                             else:
                                 subbands = sbs
                             for sb in subbands:
@@ -1270,19 +1269,14 @@ class jplotter:
                                     #   and filter out the rx's that didn't have any
                                     #   matches at all
                                     return \
-                                      filter(lambda l: len(l), \
-                                        map(lambda rx: \
-                                          map(operator.itemgetter(0), \
-                                            filter(lambda (i,m): m, \
-                                              map(lambda (i,p): \
-                                                    ((fq,sb,pid,i), rx.match(p)), plist))), rxs))
+                                      [l for l in [list(map(operator.itemgetter(0), \
+                                            [i_m for i_m in [((fq,sb,pid,i_p[0]), rx.match(i_p[1])) for i_p in plist] if i_m[1]])) for rx in rxs] if len(l)]
                                 # Now run the pol id processor over all feasable polids
                                 # and add the succesfull polid(s), if anything
-                                map(adder, \
-                                     map(lambda x: dopolid(x), \
-                                         filter(idfilter, spMap.polarizationIdsOfFREQ_SB(fq, sb))))
+                                list(map(adder, \
+                                     [dopolid(x) for x in list(filter(idfilter, spMap.polarizationIdsOfFREQ_SB(fq, sb)))]))
                         if len(acc)==olen:
-                            raise RuntimeError, "the selection '{0}' did not match anything".format(arg)
+                            raise RuntimeError("the selection '{0}' did not match anything".format(arg))
                         return acc
                     return selector 
 
@@ -1290,7 +1284,7 @@ class jplotter:
                 # selector function, execute the selector function and finally
                 # tally up the total selection
                 sel_.ddSelection = \
-                    reduce(lambda acc, sel: sel(acc), map(mkselector, args), [])
+                    reduce(lambda acc, sel: sel(acc), list(map(mkselector, args)), [])
 
                 # Now there's some normalization to be done: it could be that
                 # different expressions selected different products out of the same
@@ -1298,26 +1292,24 @@ class jplotter:
                 # set to the rescue!  
                 # After the reduction we have:
                 #   ddSelection = [ (fq, sb, polid, [prods]), .... ]
-                def reductor(acc, (f, s, p, prod)):
+                def reductor(acc, xxx_todo_changeme6):
+                    (f, s, p, prod) = xxx_todo_changeme6
                     key = (f,s,p)
                     acc[key].add(prod) if key in acc else acc.update({key:set([prod])})
                     return acc
                 sel_.ddSelection = \
-                        map(lambda ((f,s,p),v): (f,s,p,list(v)), \
-                            reduce(reductor, sel_.ddSelection, {}).iteritems())
+                        [(f_s_p_v[0][0],f_s_p_v[0][1],f_s_p_v[0][2],list(f_s_p_v[1])) for f_s_p_v in iter(reduce(reductor, sel_.ddSelection, {}).items())]
 
                 # Must update the TaQL to select the current DDIds
                 sel_.ddSelectionTaql = "(DATA_DESC_ID in {0})".format( \
-                        map(lambda (f,s,p,l): spMap.datadescriptionIdOfFREQ_SB_POL(f,s,p), \
-                            sel_.ddSelection))
+                        [spMap.datadescriptionIdOfFREQ_SB_POL(f_s_p_l1[0],f_s_p_l1[1],f_s_p_l1[2]) for f_s_p_l1 in sel_.ddSelection])
                 #print "ddSelectionTaql:",sel_.ddSelectionTaql
 
             self.dirty = True
 
         # Print the Human Readable Format
-        print "\n".join( \
-                map(lambda x: ppfx(pfx)+" "+x, \
-                    self.selection.ddSelectionHRF(self.mappings.polarizationMap)))
+        print("\n".join( \
+                [ppfx(pfx)+" "+x for x in self.selection.ddSelectionHRF(self.mappings.polarizationMap)]))
 
     #####
     #####  Next category of functions
@@ -1325,59 +1317,59 @@ class jplotter:
     def weightThreshold(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "weightThreshold() takes only one or no parameters"
+                raise RuntimeError("weightThreshold() takes only one or no parameters")
             if args[0].lower()=="none":
                 self.selection.weightThreshold = None
             else:
                 try:
                     self.selection.weightThreshold = float(args[0])
                 except:
-                    raise RuntimeError, "'{0}' is not a valid weight threshold (float)".format(args[0])
+                    raise RuntimeError("'{0}' is not a valid weight threshold (float)".format(args[0]))
             self.dirty = True
-        print "{0} {1}".format(pplt("weightThreshold:"), self.selection.weightThreshold)
+        print("{0} {1}".format(pplt("weightThreshold:"), self.selection.weightThreshold))
 
     def averageTime(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "averageTime() takes only one or no parameters"
+                raise RuntimeError("averageTime() takes only one or no parameters")
             # 'scalar' => 'Scalar', 'vector' => 'Vector', 'none' => 'None'
             s = args[0].capitalize()
             if s not in AVG:
-                raise RuntimeError,"'{0}' is not a valid time averaging method".format(args[0])
+                raise RuntimeError("'{0}' is not a valid time averaging method".format(args[0]))
             self.selection.averageTime = AVG[s]
             self.dirty = True
-        print "{0} {1}".format(pplt("averageTime:"),self.selection.averageTime)
+        print("{0} {1}".format(pplt("averageTime:"),self.selection.averageTime))
 
     def averageChannel(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "averageChannel() takes only one or no parameters"
+                raise RuntimeError("averageChannel() takes only one or no parameters")
             # 'scalar' => 'Scalar', 'vector' => 'Vector', 'none' => 'None'
             s = args[0].capitalize()
             if s not in AVG:
-                raise RuntimeError,"'{0}' is not a valid channel averaging method".format( args[0] )
+                raise RuntimeError("'{0}' is not a valid channel averaging method".format( args[0] ))
             self.selection.averageChannel = AVG[s]
             self.dirty = True
-        print "{0} {1}".format(pplt("averageChannel:"),self.selection.averageChannel)
+        print("{0} {1}".format(pplt("averageChannel:"),self.selection.averageChannel))
 
     def solint(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "solint() takes only one or no parameters"
+                raise RuntimeError("solint() takes only one or no parameters")
             if args[0].lower()=="none":
                 self.selection.solint = None
             else:
                 try:
                     self.selection.solint = parsers.parse_duration(args[0])
                 except:
-                    raise RuntimeError, "'{0}' is not a valid solution interval".format( args[0] )
+                    raise RuntimeError("'{0}' is not a valid solution interval".format( args[0] ))
             self.dirty = True
-        print "{0} {1}{2}".format(pplt("solint:"), self.selection.solint, "" if self.selection.solint is None else "s")
+        print("{0} {1}{2}".format(pplt("solint:"), self.selection.solint, "" if self.selection.solint is None else "s"))
 
     def nchav(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "nchav() takes only one or no parameters"
+                raise RuntimeError("nchav() takes only one or no parameters")
             if args[0].lower()=="none":
                 self.selection.solchan = None
             else:
@@ -1386,9 +1378,9 @@ class jplotter:
                     assert tmp > 1, "Invalid nchav value - cannot bin by less than one channel"
                     self.selection.solchan  = tmp
                 except Exception as E:
-                    raise RuntimeError, "'{0}' is not a valid channel averaging number ({1})".format( args[0], str(E) )
+                    raise RuntimeError("'{0}' is not a valid channel averaging number ({1})".format( args[0], str(E) ))
             self.dirty = True
-        print "{0} {1}".format(pplt("nchav:"), self.selection.solchan)
+        print("{0} {1}".format(pplt("nchav:"), self.selection.solchan))
 
     def getNewPlot(self):
         return copy.deepcopy(self.selection.newPlot)
@@ -1410,23 +1402,24 @@ class jplotter:
             def verifyAccumulate(acc, ax):
                 ax2 = ax.upper()
                 if ax2!="ALL" and ax2!=jenums.Axes.TYPE and ax2 not in jenums.Axes:
-                    raise RuntimeError, "'{0}' is not a valid plot axis".format( ax )
+                    raise RuntimeError("'{0}' is not a valid plot axis".format( ax ))
                 # expand to all axes if 'ALL', otherwise just append verified axis
-                return acc+filter(lambda a: a!=jenums.Axes.TYPE, jenums.Axes) if ax2=="ALL" else acc+[ax2]
+                return acc+[a for a in jenums.Axes if a!=jenums.Axes.TYPE] if ax2=="ALL" else acc+[ax2]
 
-            def proc_pair( (ax, val) ):
+            def proc_pair(xxx_todo_changeme8 ):
                 # phase one: verify and accumulate (==expand 'all' to all axes) the axis part
+                (ax, val) = xxx_todo_changeme8
                 ax2      = reduce(verifyAccumulate, ax.split(','), [])
 
                 # check if the value can be made sense of
                 if val is None:
-                    raise RuntimeError, "Missing newplot setting for axis {0}".format( ax )
+                    raise RuntimeError("Missing newplot setting for axis {0}".format( ax ))
 
                 valid    = rxVal.match(val)
                 _newPlot = self.selection.newPlot
 
                 if not valid:
-                    raise RuntimeError, "{0} is not a valid true/false setting".format( val )
+                    raise RuntimeError("{0} is not a valid true/false setting".format( val ))
 
                 # Good, now we can proceed to modifying the settings
                 val = (valid.group('yes')!=None)
@@ -1439,18 +1432,18 @@ class jplotter:
             ## extract pairs + process
             ## Note: add sentinel element None
             args = list(args)+[None]
-            map(proc_pair, zip(args[::2], args[1::2]))
+            list(map(proc_pair, list(zip(args[::2], args[1::2]))))
             #self.dirty = True
 
         # Display the settings, only for the axes for which the setting is true
-        print "{0} {1}".format(pplt("new plots on:"), 
-                hvutil.dictfold(lambda (ax,val), acc: acc+"{0} ".format(ax) if val else acc, "", self.selection.newPlot))
+        print("{0} {1}".format(pplt("new plots on:"), 
+                hvutil.dictfold(lambda (ax,val), acc: acc+"{0} ".format(ax) if val else acc, "", self.selection.newPlot)))
 
     _isHeaderLegend = re.compile(r'^(?P<not>no)?(?P<what>header|legend|source)$', re.I).match
     def showSetting(self, *args):
         curPlotType                      = self.getPlotType()
         curPlot                          = None if curPlotType is None else plots.Plotters[curPlotType]
-        args                             = filter(operator.truth, args)
+        args                             = list(filter(operator.truth, args))
         # default: no arguments given? display everything (if there is a current plot type) otherwise show nothing
         # note: we cannot return early if curPlot is None because the Flagged/UnFlagged setting is
         #       not a plot-type dependent setting. If there is a current plot type selected then
@@ -1508,35 +1501,35 @@ class jplotter:
         reduce(proc_arg, args, self)
         # decide what to print
         if show.FLAG:
-            print show.FLAG
-        hl = filter(operator.truth, [show.Header, show.Legend, show.Source])
+            print(show.FLAG)
+        hl = list(filter(operator.truth, [show.Header, show.Legend, show.Source]))
         if hl:
-            print "{0} {1}".format(pplt("show[{0}]:".format(curPlotType)), " ".join(hl))
+            print("{0} {1}".format(pplt("show[{0}]:".format(curPlotType)), " ".join(hl)))
 
     ## raw TaQL string manipulation ..
     def taqlStr(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "taqlStr accepts only one or zero arguments"
+                raise RuntimeError("taqlStr accepts only one or zero arguments")
             if args[0]=="none":
                 self.selection.taqlString = None
             else:
                 self.selection.taqlString = args[0]
             self.dirty = True
         #print "taqlStr: ",self.selection.taqlString
-        print "taqlStr: ",self.selection.selectionTaQL()
+        print("taqlStr: ",self.selection.selectionTaQL())
 
     def plotType(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "plotType accepts only one or zero arguments"
+                raise RuntimeError("plotType accepts only one or zero arguments")
             pt = args[0].lower()
             if pt not in plots.Types:
-                raise RuntimeError, "{0} not defined as valid plot type".format(pt)
+                raise RuntimeError("{0} not defined as valid plot type".format(pt))
             self.selection.plotType = pt
             self.dirty = True
         pt = self.selection.plotType
-        print "{0} {1}{2}".format(pplt("plotType:"), pt, "" if pt is None else " ["+plots.Plotters[pt].description()+"]")
+        print("{0} {1}{2}".format(pplt("plotType:"), pt, "" if pt is None else " ["+plots.Plotters[pt].description()+"]"))
 
     def getPlotType(self):
         return self.selection.plotType
@@ -1562,7 +1555,7 @@ class jplotter:
             s = NOW()
             pl = p.makePlots(self.msname, self.selection, self.mappings, readflags=self.readFlags)
             e = NOW()
-        print "Data munching took\t{0:.3f}s".format( e-s )
+        print("Data munching took\t{0:.3f}s".format( e-s ))
 
         ## Make a new 'record' where we keep meta data + plots/data sets 
         ## with unmapped labels
@@ -1603,7 +1596,8 @@ class jplotter:
                 (day0, frac) = divmod(map_.timeRange.start, nspd)
                 day0         = day0 * nspd
                 dayoff       = []
-                def fmtRange((s, e)):
+                def fmtRange(xxx_todo_changeme7):
+                    (s, e) = xxx_todo_changeme7
                     (soff, sday) = divmod(s-day0, nspd)
                     soff         = int(soff)
                     dispday      = not dayoff
@@ -1627,14 +1621,14 @@ class jplotter:
 
         # transform into plots.Dict() structure
         nUseless = 0
-        for (label, dataset) in pl.iteritems():
+        for (label, dataset) in pl.items():
             tmp  = plots.plt_dataset(dataset.x, dataset.y, dataset.m)
             if tmp.useless:
                 nUseless += 1
                 continue
             plotar2[label] = tmp
         if nUseless>0:
-            print "WARNING: {0} out of {1} data sets contained only NaN values ({2:.2f}%)!".format( nUseless, len(pl), 100.0*(float(nUseless)/len(pl)) )
+            print("WARNING: {0} out of {1} data sets contained only NaN values ({2:.2f}%)!".format( nUseless, len(pl), 100.0*(float(nUseless)/len(pl)) ))
         return plotar2
 
     def organizeAsPlots(self, plts, np):
@@ -1644,10 +1638,11 @@ class jplotter:
 
         # from the current newPlot setting, find the plot and dataset axes
         # 1. find the axes that make up the plot label (data set label will be the rest)
-        plotaxes = map(lambda (ax, nw): ax, filter(lambda (ax, nw): nw==True, np.iteritems()))
+        plotaxes = [ax_nw2[0] for ax_nw2 in [ax_nw for ax_nw in iter(np.items()) if ax_nw[1]==True]]
         splitter = plots.label_splitter(plotaxes)
         # 2. Go through all of the plots and reorganize
-        def proc_ds(acc, (l, dataset)):
+        def proc_ds(acc, xxx_todo_changeme10):
+            (l, dataset) = xxx_todo_changeme10
             (plot_l, dataset_l) = splitter(l)
             ds = dataset.prepare_for_display( self._showSetting )
             if ds is None:
@@ -1655,7 +1650,7 @@ class jplotter:
             acc.setdefault(plot_l, plots.Dict())[ dataset_l ] = ds
             return acc
         rv = parsers.copy_attributes(plots.Dict(), plts)
-        return reduce(proc_ds, plts.iteritems(), rv)
+        return reduce(proc_ds, iter(plts.items()), rv)
 
     def processLabel(self, plts):
         # Version 2.0: Based on all the plot- and data set labels, come up
@@ -1672,12 +1667,12 @@ class jplotter:
         plts.polarizations = set()
         plts.uniq          = ""
 
-        for plotlab in plts.keys():
+        for plotlab in list(plts.keys()):
             # analyze the label
             for (k,v) in plotlab.key():
                 plotattrs[k].add( v )
             # process all data sets in the current plot
-            for dslab in plts[plotlab].keys():
+            for dslab in list(plts[plotlab].keys()):
                 # analyze the label
                 for (k,v) in dslab.key():
                     dsattrs[k].add( v )
@@ -1692,8 +1687,8 @@ class jplotter:
 
         # analyze the plot + data set attributes for unique values
         # those get appended to the project
-        (plotuniq, plotrest) = hvutil.partition(lambda (k,v): len(v)==1, plotattrs.iteritems())
-        (dsuniq  ,   dsrest) = hvutil.partition(lambda (k,v): len(v)==1,   dsattrs.iteritems())
+        (plotuniq, plotrest) = hvutil.partition(lambda k_v: len(k_v[1])==1, iter(plotattrs.items()))
+        (dsuniq  ,   dsrest) = hvutil.partition(lambda k_v3: len(k_v3[1])==1,   iter(dsattrs.items()))
 
         # For the unique values, we extract the VALUES and append them
         # for the non-unique values, we produce an ATTRIBUTE list such that
@@ -1702,13 +1697,13 @@ class jplotter:
         #   "[0]"-style indexing to get the first (the only) member out of the
         #   set ... [but we know there is only one member in the set; that's
         #   what we've filtered on! So convert to list and take the 0'th element
-        expand = lambda (k,v): (k, v.pop())
-        uniq   = plots.label.format(map(expand, plotuniq)+map(expand, dsuniq))
+        expand = lambda k_v9: (k_v9[0], k_v9[1].pop())
+        uniq   = plots.label.format(list(map(expand, plotuniq))+list(map(expand, dsuniq)))
         if uniq:
             plts.uniq = uniq
         # ok, that's one, now extract the 'keys' (the attribute names)
-        plts.plotlabel = map(operator.itemgetter(0), plotrest)
-        plts.dslabel   = map(operator.itemgetter(0),   dsrest)
+        plts.plotlabel = list(map(operator.itemgetter(0), plotrest))
+        plts.dslabel   = list(map(operator.itemgetter(0),   dsrest))
 
         return plts
 
@@ -1741,8 +1736,8 @@ class jplotter:
 
         s = NOW()
         glimits = DD(lambda: (list(), list(), list(), list()))
-        for plotlab in plts.keys():
-            for (tp, mdata) in reduce(reductor, plts[plotlab].iteritems(), DD(lambda: (list(), list(), list(), list()))).iteritems():
+        for plotlab in list(plts.keys()):
+            for (tp, mdata) in reduce(reductor, iter(plts[plotlab].items()), DD(lambda: (list(), list(), list(), list()))).items():
                 mref      = plts.meta[plotlab][tp]
                 mref.xlim = (min(mdata[0]), max(mdata[1]))
                 mref.ylim = (min(mdata[2]), max(mdata[3]))
@@ -1752,22 +1747,22 @@ class jplotter:
                 glimits[tp][ 2 ].append( mref.ylim[0] )
                 glimits[tp][ 3 ].append( mref.ylim[1] )
         # and set them
-        for (tp, mdata) in glimits.iteritems():
+        for (tp, mdata) in glimits.items():
             mref      = plts.limits[tp]
             mref.xlim = (min(mdata[0]), max(mdata[1]))
             mref.ylim = (min(mdata[2]), max(mdata[3]))
         e = NOW()
 
         if defaults['verbose']:
-            print "min/max processing took\t{0:.3f}s                ".format( e-s )
+            print("min/max processing took\t{0:.3f}s                ".format( e-s ))
 
         if False:
-            for k in plts.meta.keys():
-                print "META[",k,"]"
-                for d in plts.meta[k].keys():
-                    print "   DS[",d,"]/ x:",plts.meta[k][d].xlim," y:",plts.meta[k][d].ylim
-            for k in plts.limits.keys():
-                print "LIMITS[",k,"]/ x:",plts.limits[k].xlim," y:",plts.limits[k].ylim
+            for k in list(plts.meta.keys()):
+                print("META[",k,"]")
+                for d in list(plts.meta[k].keys()):
+                    print("   DS[",d,"]/ x:",plts.meta[k][d].xlim," y:",plts.meta[k][d].ylim)
+            for k in list(plts.limits.keys()):
+                print("LIMITS[",k,"]/ x:",plts.limits[k].xlim," y:",plts.limits[k].ylim)
         return plts
 
     def drawFunc(self, plotar, dev, fst, onePage=None, **opts):
@@ -1776,7 +1771,7 @@ class jplotter:
         plotter.drawfunc(dev, plotar, fst, onePage, **opts)
         e = NOW();
         if opts.get('verbose', True):
-            print "drawing took\t{0:.3f}s                ".format( e-s )
+            print("drawing took\t{0:.3f}s                ".format( e-s ))
 
     def reset(self):
         self.msname              = None
@@ -1806,7 +1801,7 @@ def mk_output(pfx, items, maxlen):
         acc[-1] += " {0}".format(item)
         return acc
     for l in reduce(reducer, items, lines):
-        print l.strip()
+        print(l.strip())
 
 
 
@@ -1840,20 +1835,20 @@ class environment(object):
                 # so we have 32 + 16 (predfined in PGPLOT) - 2 (black/white) = 46 colours
                 nExtra = min(hici - loci, 32)
                 # Generate extra colours and write them in the color index table
-                map(lambda (ci, (r, g, b)): ppgplot.pgscr(ci, r, g, b), zip(itertools.count(loci), gencolors.getncol_rgb(nExtra)))
+                list(map(lambda ci_r_g_b: ppgplot.pgscr(ci_r_g_b[0], ci_r_g_b[1][0], ci_r_g_b[1][1], ci_r_g_b[1][2]), list(zip(itertools.count(loci), gencolors.getncol_rgb(nExtra)))))
                 # set background to white and text to black
                 ppgplot.pgscr(0, 1.0, 1.0, 1.0)
                 ppgplot.pgscr(1, 0.0, 0.0, 0.0)
                 self.devNColor = loci + nExtra
             except:
-                raise RuntimeError, "Sorry, failed to open device '{0}'".format(self.devName)
+                raise RuntimeError("Sorry, failed to open device '{0}'".format(self.devName))
         ppgplot.pgslct(self.device)
         ppgplot.pgask( False )
         ocwd = os.getcwd()
         os.chdir(self.wd)
         ncwd = os.getcwd()
         if ocwd!=ncwd:
-            print "[wd now is: {0}]".format(ncwd)
+            print("[wd now is: {0}]".format(ncwd))
 
     # we expect to be called as ".cwd("path/to/cd/to", ...)" or ".cwd()"
     # (if '...' is non-empty, that's an error though
@@ -1867,7 +1862,7 @@ class environment(object):
     #       (the user does not (need to) know about the (hidden) 'self') ...
     def cwd(self, *args):
         if len(args)>1:
-            raise RuntimeError, "This command only supports 0 or 1 arguments"
+            raise RuntimeError("This command only supports 0 or 1 arguments")
         # support '~' expansion at the start of the path
         os.chdir( re.sub(r"^~", os.environ['HOME'], ("~" if not args else args[0])) )
         self.wd = os.getcwd()
@@ -1891,7 +1886,7 @@ class environment(object):
     def postProcess(self, *args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "postProcess accepts only zero or one arguments"
+                raise RuntimeError("postProcess accepts only zero or one arguments")
             if args[0]=="none":
                 self.post_processing_fn  = None
                 self.post_processing_mod = None
@@ -1903,7 +1898,7 @@ class environment(object):
                 # split the MODULE.FUNCTION into MODULE and ".FUNCTION"
                 (m_name, m_fn)   = os.path.splitext(m_file)
                 if not m_fn:
-                    raise RuntimeError, "Invalid MODULE.FUNCTION specification"
+                    raise RuntimeError("Invalid MODULE.FUNCTION specification")
                 # strip the "." from ".FUNCTION"
                 m_fn = m_fn[1:]
                 f  = None
@@ -1915,11 +1910,11 @@ class environment(object):
                     self.post_processing_fn  = mod.__dict__[m_fn]
                     self.post_processing_mod = args[0]
                 except KeyError:
-                    raise RuntimeError, "Function '{0}' not found in module {1}".format(m_fn, m_name)
+                    raise RuntimeError("Function '{0}' not found in module {1}".format(m_fn, m_name))
                 finally:
                     if f:
                         f.close()
-        print "postProcessing: {0}".format( self.post_processing_mod )
+        print("postProcessing: {0}".format( self.post_processing_mod ))
 
 
 # Some commands need to have the whole expression as a single argument
@@ -1998,12 +1993,12 @@ def run_plotter(cmdsrc, **kwargs):
     # the "range" command
     def unknown_range(x):
         def print_it():
-            print "#### UNKNOWN range key '{0}'".format(x)
+            print("#### UNKNOWN range key '{0}'".format(x))
         return print_it
 
     def range_f(*args):
         if not j().haveMS():
-            print "No MS opened yet"
+            print("No MS opened yet")
         else:
             defaults = ['fq', 'ant', 'src', 'time']
             disps = { 
@@ -2018,9 +2013,8 @@ def run_plotter(cmdsrc, **kwargs):
                     'scan': j().listScans
                     }
             # If no arguments show default ranges. Yield error if unknown range key is requested
-            map(lambda x: x(), \
-                map(lambda k: disps.get(k, unknown_range(k)), \
-                    defaults if not args else map(str.lower, args)))
+            list(map(lambda x: x(), \
+                [disps.get(k, unknown_range(k)) for k in defaults if not args else list(map(str.lower, args))]))
         
     c.addCommand( \
         mkcmd(rx=re.compile(r"^r\b.*$"), hlp=Help["r"], \
@@ -2030,12 +2024,12 @@ def run_plotter(cmdsrc, **kwargs):
     def layout_f(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         plotter = plots.Plotters[pt]
         if args:
             plotter.layout( *args )
-        print "{0} {1} [{2}]".format(pplt("layout[{0}]:".format(pt)), plotter.layout(), plotter.layoutStyle() )
+        print("{0} {1} [{2}]".format(pplt("layout[{0}]:".format(pt)), plotter.layout(), plotter.layoutStyle() ))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^nxy(\s+[0-9]+\s+[0-9]+)?(\s+(fixed|flexible|rows|columns))*$", re.I), \
@@ -2047,12 +2041,12 @@ def run_plotter(cmdsrc, **kwargs):
 
     # list known plot-types "lp"
     def list_pt():
-        print "Known plot-types:"
+        print("Known plot-types:")
         def p(x):
-            print x
+            print(x)
         # compute longest plot type name
-        longest = max( map(compose(len, str), plots.Types) )
-        map(lambda x : p("{0:{1}} => {2}".format(x, longest, plots.Plotters[x].description())), sorted(plots.Types))
+        longest = max( list(map(compose(len, str), plots.Types)) )
+        list(map(lambda x : p("{0:{1}} => {2}".format(x, longest, plots.Plotters[x].description())), sorted(plots.Types)))
     c.addCommand( \
         mkcmd(rx=re.compile(r"^lp$"), hlp=Help["lp"], \
               cb=list_pt, id="lp") )
@@ -2062,17 +2056,17 @@ def run_plotter(cmdsrc, **kwargs):
     def multisb(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         if args:
             if len(args)>1:
-                raise RuntimeError, "This command supports only one argument"
+                raise RuntimeError("This command supports only one argument")
             mo = rxYesNo.match( args[0] )
             if not mo:
-                raise RuntimeError, "Invalid argument, it's not t(rue) or f(alse)"
+                raise RuntimeError("Invalid argument, it's not t(rue) or f(alse)")
             # it's either t(rue) or f(alse)
             plots.Plotters[pt].multisb( mo.group('yes') is not None )
-        print "multisubband[{0}]: {1}".format( pt, plots.Plotters[pt].multisb() )
+        print("multisubband[{0}]: {1}".format( pt, plots.Plotters[pt].multisb() ))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^multi(\s+(t(rue)?|f(alse)?))?$", re.I), \
@@ -2091,7 +2085,7 @@ def run_plotter(cmdsrc, **kwargs):
     def scale_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
 
         # function 'pointers' to the scaling functions
@@ -2112,7 +2106,7 @@ def run_plotter(cmdsrc, **kwargs):
             fn( idx, s )
         if lim:
             fn( idx, [float(mo.group('lo')), float(mo.group('hi'))] )
-        print "{0}-scale [{1}]: {2}".format( mo.group('ax'), pt, fn(idx) )
+        print("{0}-scale [{1}]: {2}".format( mo.group('ax'), pt, fn(idx) ))
 
     # HV: 24/Apr/2017 - There is no documentation for 'y' or 'x'
     #                   because they're all under 'xyscale' which
@@ -2129,11 +2123,11 @@ def run_plotter(cmdsrc, **kwargs):
     def label_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         labels = plots.Plotters[pt].setLabel(*args)
         for (which, tp, txt) in labels:
-            print "{0}: {1}[{2}] '{3}'".format(pt, which, tp, txt)
+            print("{0}: {1}[{2}] '{3}'".format(pt, which, tp, txt))
 
     c.addCommand( \
             mkcmd(rx=rxLabel, id="label", args=lambda x : re.sub(r"^label\s*", "", x), \
@@ -2144,9 +2138,9 @@ def run_plotter(cmdsrc, **kwargs):
     def sort_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
-        print "sort order [{0}]: {1}".format(pt, plots.Plotters[pt].sortby(*args))
+        print("sort order [{0}]: {1}".format(pt, plots.Plotters[pt].sortby(*args)))
     c.addCommand( \
         mkcmd(rx=re.compile(r"^sort\b.*$"), \
               args=lambda x: re.sub("^sort\s*", "", x).split(), \
@@ -2157,42 +2151,42 @@ def run_plotter(cmdsrc, **kwargs):
     def set_lw(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         lw = plots.Plotters[pt].setLineWidth(*args)
-        print "linewidth[{0}]: {1}".format(pt, lw)
+        print("linewidth[{0}]: {1}".format(pt, lw))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^linew(idth)?(\s+[0-9]+)?$"), \
-              args=lambda x: map(int, re.sub("^linew(idth)?\s*", "", x).split()),
+              args=lambda x: list(map(int, re.sub("^linew(idth)?\s*", "", x).split())),
               cb=set_lw, id="linew", \
               hlp="linew(idth) [<number>]\n\tset/display line width when drawing line plots"))
 
     def set_ps(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         ps = plots.Plotters[pt].setPointSize(*args)
-        print "pointsize[{0}]: {1}".format(pt, ps)
+        print("pointsize[{0}]: {1}".format(pt, ps))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^ptsz(\s+[0-9]+)?$"), \
-              args=lambda x: map(int, re.sub("^ptsz\s*", "", x).split()),
+              args=lambda x: list(map(int, re.sub("^ptsz\s*", "", x).split())),
               cb=set_ps, id="ptsz", \
               hlp="ptsz [<number>]\n\tset/display point size when drawing point plots"))
 
     def set_ms(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         ms = plots.Plotters[pt].setMarkerSize(*args)
-        print "markersize[{0}]: {1}".format(pt, ms)
+        print("markersize[{0}]: {1}".format(pt, ms))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^marksz(\s+[0-9]+)?$"), \
-              args=lambda x: map(int, re.sub("^marksz\s*", "", x).split()),
+              args=lambda x: list(map(int, re.sub("^marksz\s*", "", x).split())),
               cb=set_ms, id="marksz", \
               hlp="marksz [<number>]\n\tset/display marker size for marking marked points"))
 
@@ -2201,11 +2195,11 @@ def run_plotter(cmdsrc, **kwargs):
     def draw_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         if args:
             plots.Plotters[pt].setDrawer(*args)
-        print "drawers[{0}]: {1}".format(pt, plots.Plotters[pt].setDrawer())
+        print("drawers[{0}]: {1}".format(pt, plots.Plotters[pt].setDrawer()))
 
     c.addCommand(
         mkcmd(rx=re.compile(r"^draw\b.*$"), id="draw",
@@ -2215,10 +2209,10 @@ def run_plotter(cmdsrc, **kwargs):
     def ckey_f(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         ckf = plots.Plotters[pt].colkey_fn( *args )
-        print "ckey[{0}]: {1}".format(pt, ckf)
+        print("ckey[{0}]: {1}".format(pt, ckf))
 
     c.addCommand( \
         mkcmd(rx=re.compile(r"^ckey\b.*$"), id="ckey",
@@ -2243,7 +2237,7 @@ def run_plotter(cmdsrc, **kwargs):
     def filter_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         pref = plots.Plotters[pt]
         mo   = rxFilter.match(args[0])
@@ -2261,12 +2255,12 @@ def run_plotter(cmdsrc, **kwargs):
                 except ValueError:
                     idx = len(pref.yAxis)
             if idx<0 or idx>=len(pref.yAxis):
-                raise RuntimeError, "Invalid index {0}".format(mo.group('idx'))
+                raise RuntimeError("Invalid index {0}".format(mo.group('idx')))
             idx = [idx]
 
         # if idx still None, it's all y-Axes
         if idx is None:
-            idx = range(len(pref.yAxis))
+            idx = list(range(len(pref.yAxis)))
 
         # command or query is defined by wether or not there is a filter string
         if filt:
@@ -2274,7 +2268,7 @@ def run_plotter(cmdsrc, **kwargs):
                 pref.filter_f(i, filt)
         prefix = lambda i: pplt("filter[{0}/{1}]:".format(pt, pref.yAxis[i]))
         for i in idx:
-            print "{0} {1}".format(prefix(i), pref.filter_f(i))
+            print("{0} {1}".format(prefix(i), pref.filter_f(i)))
 
     c.addCommand( 
             mkcmd(rx=rxFilter, id="filter", args = lambda x: x, cb=filter_fn,
@@ -2286,7 +2280,7 @@ def run_plotter(cmdsrc, **kwargs):
     rxAnimate = re.compile(r"^animate\s+(?P<expr>\S.*)$")
     def animate_fn(*args):
         if not foo[o.curdev].navigable():
-            raise RuntimeError, "Animation only available on screen devices"
+            raise RuntimeError("Animation only available on screen devices")
         # the parser might be fed with keywords - we may have to check if they are available
         tr = j().mappings.timeRange if j().mappings is not None else None
         # parse the expression and loop over the plots
@@ -2306,19 +2300,19 @@ def run_plotter(cmdsrc, **kwargs):
             # no dataset from memory so we'll have to refresh
             refresh(e)
             if not e.rawplots:
-                raise RuntimeError, "No plots created(yet)?"
+                raise RuntimeError("No plots created(yet)?")
             the_plots = e.rawplots
         else:
             if dataset_id not in datasets:
-                raise RuntimeError, "The data set {0} does not exist".format(dataset_id)
+                raise RuntimeError("The data set {0} does not exist".format(dataset_id))
             the_plots = datasets[dataset_id]
             if not parsers.isDataset(the_plots):
-                raise RuntimeError, "The variable {0} does not seem to refer to a set of plots"
-        keys = sort_f(filter(filter_f, the_plots.keys()))
+                raise RuntimeError("The variable {0} does not seem to refer to a set of plots")
+        keys = sort_f(list(filter(filter_f, list(the_plots.keys()))))
         if not keys:
-            raise RuntimeError, "After filtering there were no plots left to animate"
+            raise RuntimeError("After filtering there were no plots left to animate")
         # Now we group_by and organize each set as plots
-        print "Preparing ", len(keys), " datasets for animation"
+        print("Preparing ", len(keys), " datasets for animation")
         sequence = []
         s_time = NOW()
         for group_key, datakeyiter in itertools.groupby(keys, groupby_f): #groups:
@@ -2330,16 +2324,16 @@ def run_plotter(cmdsrc, **kwargs):
             if tmp:
                 sequence.append( tmp )
         e_time = NOW()
-        print "Preparing animation took\t{0:.3f}s                ".format( e_time - s_time )
+        print("Preparing animation took\t{0:.3f}s                ".format( e_time - s_time ))
         if not sequence:
-            print "No plots to animate, unfortunately ..."
+            print("No plots to animate, unfortunately ...")
             return None
         # loop indefinitely
         fps = settings.fps if hasattr(settings, 'fps') else 0.7
         try:
             env().select()
             dT = 1.0/fps
-            print "Press ^C to stop the animation [{0}fps]".format( fps )
+            print("Press ^C to stop the animation [{0}fps]".format( fps ))
             while True:
                 for (page, page_plots) in enumerate(sequence):
                     # we really would like to have all plots on one page
@@ -2376,7 +2370,7 @@ def run_plotter(cmdsrc, **kwargs):
     def mark_fn(*args):
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to operate on"
+            print("No plot type selected to operate on")
             return
         pref = plots.Plotters[pt]
         mo   = rxMark.match(args[0])
@@ -2394,11 +2388,11 @@ def run_plotter(cmdsrc, **kwargs):
                 except ValueError:
                     idx = len(pref.yAxis)
             if idx<0 or idx>=len(pref.yAxis):
-                raise RuntimeError, "Invalid index {0}".format(mo.group('idx'))
+                raise RuntimeError("Invalid index {0}".format(mo.group('idx')))
             idx = [idx]
 
         # if idx still None, it's all y-Axes
-        idx = range(len(pref.yAxis)) if idx is None else idx
+        idx = list(range(len(pref.yAxis))) if idx is None else idx
 
         # command or query is defined by wether or not there is a mark string
         if mark:
@@ -2406,7 +2400,7 @@ def run_plotter(cmdsrc, **kwargs):
                 pref.mark(i, mark)
         prefix = lambda i: pplt("mark[{0}/{1}]:".format(pt, pref.yAxis[i]))
         for i in idx:
-            print "{0} {1}".format(prefix(i), pref.mark(i))
+            print("{0} {1}".format(prefix(i), pref.mark(i)))
 
     c.addCommand( 
             mkcmd(rx=rxMark, id="mark", args = lambda x: x, cb=mark_fn,
@@ -2417,7 +2411,7 @@ def run_plotter(cmdsrc, **kwargs):
     def reset():
         pt = j().getPlotType()
         if not pt:
-            print "No plot type selected to reset"
+            print("No plot type selected to reset")
             return
         plots.Plotters[pt].reset()
         
@@ -2449,12 +2443,12 @@ def run_plotter(cmdsrc, **kwargs):
     # env() is a function returning the current environment, if any
     def env():
         if o.curdev is None:
-            raise RuntimeError, "Current plot device closed. Create a new one{0}.".format(
-                    " or select one from {0}".format(foo.keys()) if foo else "" )
+            raise RuntimeError("Current plot device closed. Create a new one{0}.".format(
+                    " or select one from {0}".format(list(foo.keys())) if foo else "" ))
         try:
             return foo[o.curdev]
         except KeyError:
-            raise RuntimeError, "Internal error: device '{0}' is not a key in the dict?!".format(o.curdev)
+            raise RuntimeError("Internal error: device '{0}' is not a key in the dict?!".format(o.curdev))
 
     open_win  = lambda x: ppgplot.pgopen(repr(x)+"/xw")
     def open_file(x):
@@ -2476,11 +2470,11 @@ def run_plotter(cmdsrc, **kwargs):
                 e.rawplots = j().makePlots()
             except KeyboardInterrupt:
                 e.rawplots = None
-                print ">>> plotting cancelled by user"
+                print(">>> plotting cancelled by user")
                 return False
 
             if e.rawplots is None or len(e.rawplots)==0:
-                print "No plots produced? Rethink your selection"
+                print("No plots produced? Rethink your selection")
                 e.rawplots = None
                 return False
             # succesfully refreshed plots!
@@ -2576,7 +2570,7 @@ def run_plotter(cmdsrc, **kwargs):
             return
         refresh(e)
         if not e.plots:
-            print "No plots to save, sorry"
+            print("No plots to save, sorry")
             return
         # returns device file name and type as separate items
         # so we can display the file name w/o the (inferred) type
@@ -2584,13 +2578,13 @@ def run_plotter(cmdsrc, **kwargs):
         try:
             f = ppgplot.pgopen(fn+ptp)
         except:
-            raise RuntimeError, "Sorry, failed to open file '{0}'".format(e.wd +"/"+fn if not fn[0] == "/" else fn)
+            raise RuntimeError("Sorry, failed to open file '{0}'".format(e.wd +"/"+fn if not fn[0] == "/" else fn))
         ppgplot.pgslct(f)
         ppgplot.pgask( False )
         j().drawFunc(e.plots, ppgplot, 0, ncol=e.devNColor)
         ppgplot.pgclos()
         e.select()
-        print "Plots saved to [{0}]".format(fn)
+        print("Plots saved to [{0}]".format(fn))
 
     c.addCommand( \
         mkcmd(rx=re.compile("^save(\s+\S+)?$"), id="save",
@@ -2624,10 +2618,10 @@ def run_plotter(cmdsrc, **kwargs):
     rxShowVars = re.compile(r"^(store|load)\s*$")
 
     def show_vars_fn():
-        print "Currently defined variables:"
-        namelen  = max(max(map(len, datasets.keys())), 10) if datasets else 0
-        for (k,v) in datasets.iteritems():
-            print "{0:<{1}} = {2}".format(k, namelen, "'{0}' from {1} [{2} plots]".format(v.plotType, v.msname, len(v)) if parsers.isDataset(v) else str(v))
+        print("Currently defined variables:")
+        namelen  = max(max(list(map(len, list(datasets.keys())))), 10) if datasets else 0
+        for (k,v) in datasets.items():
+            print("{0:<{1}} = {2}".format(k, namelen, "'{0}' from {1} [{2} plots]".format(v.plotType, v.msname, len(v)) if parsers.isDataset(v) else str(v)))
             
 
     def store_fn(expr):
@@ -2640,7 +2634,7 @@ def run_plotter(cmdsrc, **kwargs):
         e.rawplots    = datasets['_']
         # plots replaced? replot
         if isinstance(e.rawplots, type({})) and e.rawplots is not prevplt:
-            print "stored: {0} datasets in current".format( len(e.rawplots) )
+            print("stored: {0} datasets in current".format( len(e.rawplots) ))
             refresh_after_reload(e)
 
     def load_fn(expr):
@@ -2650,7 +2644,7 @@ def run_plotter(cmdsrc, **kwargs):
         prevplt    = e.rawplots
         e.rawplots = parsers.parse_dataset_expr(expr, datasets)
         if isinstance(e.rawplots, type({})):
-            print "loaded: {0} datasets into current".format( len(e.rawplots) )
+            print("loaded: {0} datasets into current".format( len(e.rawplots) ))
             # and redraw if necessary
             if prevplt is not e.rawplots:
                 refresh_after_reload(e)
@@ -2667,18 +2661,18 @@ def run_plotter(cmdsrc, **kwargs):
     def win_fn(*args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "This command only supports one argument"
+                raise RuntimeError("This command only supports one argument")
             # select [possibly create first] window
             dev_id = args[0]
             if dev_id not in foo:
                 foo[dev_id] = environment(defaults['unique'], "{0}/xw".format(dev_id))
             o.curdev = dev_id
             foo[o.curdev].select()
-        print "Current plot window: ",o.curdev
+        print("Current plot window: ",o.curdev)
 
     c.addCommand( \
             mkcmd(rx=re.compile(r"win(\s+[0-9]+)?$"), id="win", \
-                  args=lambda x: map(int, re.sub(r"win\s*", "", x).split()), \
+                  args=lambda x: list(map(int, re.sub(r"win\s*", "", x).split())), \
                   cb=win_fn, \
                   hlp="win [<num>]\n\topen/select plot window <num> for subsequent plots or display current plot window") )
 
@@ -2686,7 +2680,7 @@ def run_plotter(cmdsrc, **kwargs):
     def file_fn(*args):
         if args:
             if len(args)>1:
-                raise RuntimeError, "This command only supports one argument"
+                raise RuntimeError("This command only supports one argument")
             # select [possibly create] file
             rxRefile = re.compile(r"^refile\s+(?P<file>.+)$")
             refile   = rxRefile.match(args[0])
@@ -2700,7 +2694,7 @@ def run_plotter(cmdsrc, **kwargs):
                     foo[fn] = environment(defaults['unique'], fn)
                 o.curdev = fn
                 foo[fn].select()
-        print "Current plot file: ",foo[o.curdev].devName
+        print("Current plot file: ",foo[o.curdev].devName)
 
     c.addCommand( \
             mkcmd(rx=re.compile(r"^(re)?file(\s+\S+)?$"), id="file", \
@@ -2728,11 +2722,11 @@ def run_plotter(cmdsrc, **kwargs):
     def page_fn(e, cmdstr):
         # sanity check
         if not e.plots or len(e.plots)==0:
-            print "No plots at all. Make some first before browsing through them"
+            print("No plots at all. Make some first before browsing through them")
             return
         # if o.curdev is not integer, we cannot iterate through it
         if not foo[o.curdev].navigable():
-            print "current device is not window so cannot navigate"
+            print("current device is not window so cannot navigate")
             return
         # get the current plot type and find the layout (for the number of plots/page)
         pt = j().getPlotType()
@@ -2792,17 +2786,17 @@ def run_plotter(cmdsrc, **kwargs):
     def navigate_fn(e):
         mouse = {'A': 'n', 'X':'p'}
         if not e.plots or len(e.plots)==0:
-            print "No plots to browse"
+            print("No plots to browse")
             return
         if e.device is None:
-            print "No device to navigate"
+            print("No device to navigate")
             return
         # if o.curdev is not integer, we cannot iterate through it
         if not foo[o.curdev].navigable():
-            print "current device is not window so cannot navigate"
+            print("current device is not window so cannot navigate")
             return
         # Enter into main loop
-        print "entering interactive mode. 'q' to leave, 'help page' for navigation commands."
+        print("entering interactive mode. 'q' to leave, 'help page' for navigation commands.")
         buf = ""
         while True:
             (x,y,ch) = ppgplot.pgcurs()
@@ -2839,7 +2833,7 @@ def run_plotter(cmdsrc, **kwargs):
     # show the current selection, "sl"
     def curselection():
         if not j().haveMS():
-            print "No MS opened yet"
+            print("No MS opened yet")
         else:
             j().freqsel()
             j().channels()
@@ -2937,7 +2931,7 @@ def run_plotter(cmdsrc, **kwargs):
               hlp="ls [dir]\n\tlist directory contents (default: current working directory)") )
 
     def pwd():
-        print os.getcwd()
+        print(os.getcwd())
     c.addCommand( \
         mkcmd(rx=re.compile(r"^pwd$"), id="pwd", cb=pwd,
               hlp="pwd\n\tprint current working directory") )
@@ -2945,7 +2939,7 @@ def run_plotter(cmdsrc, **kwargs):
     # Write selection to new MS (reference copy)
     def write_tab(tabname):
         if not j().haveMS():
-            raise RuntimeError, "No MS opened yet"
+            raise RuntimeError("No MS opened yet")
         with ms2util.opentable(j().haveMS()) as orgtab:
             t2     = orgtab.query(j().selection.selectionTaQL())
             t2.copy(tabname)
@@ -2973,7 +2967,7 @@ def run_plotter(cmdsrc, **kwargs):
     c.run(cmdsrc)
 
     # Clean up all plot windows
-    for (k,v) in foo.iteritems():
+    for (k,v) in foo.items():
         v.close()
     ppgplot.pgend()
 

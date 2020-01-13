@@ -34,13 +34,13 @@ def genhsv(n):
             for h in getfracs(n):
                 yield (h, s, bias(v))
 
-getflt  = lambda x: map(float, x)
-gethsvs = lambda n: map(getflt, genhsv(n))
+getflt  = lambda x: list(map(float, x))
+gethsvs = lambda n: list(map(getflt, genhsv(n)))
 getrgb  = lambda x: colorsys.hsv_to_rgb(*x)
 getncol_hsv = lambda n: list(itertools.islice(gethsvs(n), n))
-getncol_rgb = lambda n: map(getrgb, getncol_hsv(n))
+getncol_rgb = lambda n: list(map(getrgb, getncol_hsv(n)))
 
 if __name__ == "__main__":
     l = getncol(13)
-    print "Generated ",len(l)," colours"
-    print map(getrgb, l)
+    print("Generated ",len(l)," colours")
+    print(list(map(getrgb, l)))

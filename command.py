@@ -2,6 +2,7 @@
 # A rewrite from the glish based version from jivegui.ms2
 import re, sys, copy, pydoc, fcntl, termios, struct, os, itertools, math, tempfile, traceback
 import hvutil, glob
+from functools import reduce
 
 # if we have readline, go on, use it then!
 # we attempt to save the history across invocations of this prgrm
@@ -89,7 +90,7 @@ class newhistory(object):
             # update the history for this project
             readline.write_history_file(self.historyFile)
         except Exception as E:
-            print "Failed to write history to {0} - {1}".format(self.historyFile, E)
+            print("Failed to write history to {0} - {1}".format(self.historyFile, E))
         # put back the original history!
         readline.clear_history()
         readline.read_history_file(self.oldhistFile)
@@ -113,20 +114,20 @@ class readkbd(newhistory):
         self.controlc = None
         # we want readline completer to give us the "/" as well!
         readline.set_completer_delims( readline.get_completer_delims().replace("/", "").replace("-","") )
-        print "+++++++++++++++++++++ Welcome to cli +++++++++++++++++++"
-        print "$Id: command.py,v 1.16 2015-11-04 13:30:10 jive_cc Exp $"
-        print "  'exit' exits, 'list' lists, 'help' helps "
+        print("+++++++++++++++++++++ Welcome to cli +++++++++++++++++++")
+        print("$Id: command.py,v 1.16 2015-11-04 13:30:10 jive_cc Exp $")
+        print("  'exit' exits, 'list' lists, 'help' helps ")
 
     # add the iterator protocol (the context protocol is supplied by newhistory)
     def __iter__(self):
         return self
 
     def handle(self, exception):
-        print exception
+        print(exception)
 
-    def next(self):
+    def __next__(self):
         try:
-            l = raw_input(self.prompt+"> ")
+            l = input(self.prompt+"> ")
             if self.controlc:
                 #rl_done.value = 0
                 self.controlc = None
@@ -134,7 +135,7 @@ class readkbd(newhistory):
             return l
         except (EOFError):
             quit = True
-            print "\nKTHXBYE!"
+            print("\nKTHXBYE!")
         except KeyboardInterrupt:
             # user pressed ctrl-c whilst something was 
             # in the buffer. Make the code skip the next line of input.
@@ -146,7 +147,7 @@ class readkbd(newhistory):
                 #print "rl_done = ",rl_done
                 #rl_done.value = 1
                 #print "rl_done = ",rl_done
-                print "\nYour next line of input might be ignored.\nI have not understood readline's ^C handling good enough to make it work.\nFor the moment just type <enter> and ignore the displayed text."
+                print("\nYour next line of input might be ignored.\nI have not understood readline's ^C handling good enough to make it work.\nFor the moment just type <enter> and ignore the displayed text.")
             return None
         if quit:
             raise StopIteration
@@ -169,7 +170,7 @@ class readstring:
         self.lines = s.split('\n')
 
     def handle(self, exception):
-        print exception
+        print(exception)
 
     def __enter__(self):
         return self
@@ -208,17 +209,17 @@ class readfile:
     ##    
     def __init__(self, f, *args):
         if not f:
-            raise ValueError,"no filename given to readfile()"
+            raise ValueError("no filename given to readfile()")
 
         try:
             self.args     = quote_split(args[0], ' ') if args and args[0] else []
             self.file     = open(f)
             self.filename = f
-        except IOError,e:
-            raise ValueError, "readfile '{0}' - {1}".format(f, e)
+        except IOError as e:
+            raise ValueError("readfile '{0}' - {1}".format(f, e))
 
     def handle(self, exception):
-        print exception
+        print(exception)
 
     def __enter__(self):
         return self
@@ -226,17 +227,17 @@ class readfile:
         return False
     def __iter__(self):
         return self
-    def next(self):
+    def __next__(self):
         line = None
         try:
             line = re.sub(r"#.*$", "", self.file.next().rstrip('\n'))
             return line.format(*self.args)
         except IndexError:
-            print "readfile[{0}]: Not enough arguments for script-line:".format(self.filename)
-            print line
+            print("readfile[{0}]: Not enough arguments for script-line:".format(self.filename))
+            print(line)
             raise StopIteration
-        except IOError,e:
-            print "readfile[{0}]: {1}".format(self.filename, e)
+        except IOError as e:
+            print("readfile[{0}]: {1}".format(self.filename, e))
             raise StopIteration
 
 class scripted:
@@ -247,7 +248,7 @@ class scripted:
 
     # any exception terminates the scribd
     def handle(self, exception):
-        print exception
+        print(exception)
         sys.exit( -1 )
 
     ## Support the context protocol
@@ -329,7 +330,7 @@ class scripted:
 def mkcmd(**kwargs):
     # create an instance of an anonymous type
     o = type('', (), {})()
-    map(lambda (a,v): setattr(o,a,v), kwargs.iteritems())
+    list(map(lambda a_v: setattr(o,a_v[0],a_v[1]), iter(kwargs.items())))
     return o
 
 ## oneliner to discard all characters up until the comment character
@@ -347,7 +348,7 @@ stripcomment = lambda s, cmt='#': \
 def quote_split(s, splitchar=';'):
     rv = [""]
     inquote = False
-    for i in xrange(len(s)):
+    for i in range(len(s)):
         if not inquote and s[i]==splitchar:
             rv.append( "" )
             continue
@@ -417,8 +418,8 @@ class CommandLineInterface:
                 if not line:
                     continue
                 try:
-                    map(lambda x: self.parseOneCmd(x) if not self.exit else None, \
-                          quote_split(stripcomment(line)))
+                    list(map(lambda x: self.parseOneCmd(x) if not self.exit else None, \
+                          quote_split(stripcomment(line))))
                 except Exception as E:
                     if self.debug:
                         traceback.print_exc()
@@ -431,50 +432,52 @@ class CommandLineInterface:
         s = []
 
         # compute maximum width of a command name
-        width = max(map(lambda x: len(x.id), self.commands))
+        width = max([len(x.id) for x in self.commands])
         fmt   = lambda x: "{0:<{1}}".format(x, width+2)
         def p(x):
             if len(s)>0 and len(s[-1])<(6*width):
                 s[-1] += x
             else:
                 s.append(x)
-        map(lambda x: p(fmt(x.id)), sorted(self.commands, key=lambda x: x.id))
+        list(map(lambda x: p(fmt(x.id)), sorted(self.commands, key=lambda x: x.id)))
 
         def p(x):
             s.append(x)
         p("=== Macros   ===")
-        map(lambda (k,v): p(k+" => "+v), self.macros.iteritems())
+        list(map(lambda k_v1: p(k_v1[0]+" => "+k_v1[1]), iter(self.macros.items())))
         maybePage(s)
 
     def addCommand(self, cmd):
         if not hasattr(cmd, "id") or not hasattr(cmd, "cb") or not hasattr(cmd, "rx"):
-            raise RuntimeError, "Command MUST have an 'id' field, a 'cb' (callback) field and an 'rx' field"
+            raise RuntimeError("Command MUST have an 'id' field, a 'cb' (callback) field and an 'rx' field")
         # check if there's not a macro/command with this name already
         for x in self.commands:
             if x.id==cmd.id:
-                raise RuntimeError,"Command '{0}' already exists".format(cmd.id)
-        for (n,v) in self.macros.iteritems():
+                raise RuntimeError("Command '{0}' already exists".format(cmd.id))
+        for (n,v) in self.macros.items():
             if cmd.rx.match(n):
-                raise RuntimeError,"Attempt to add command '{0}', which is already defined as macro".format(cmd.id)
+                raise RuntimeError("Attempt to add command '{0}', which is already defined as macro".format(cmd.id))
         self.commands.append(cmd)
 
-    def addMacro(self, (n,v)):
+    def addMacro(self, xxx_todo_changeme2):
         # We need to do cycle detection - 
         # (1) create an updated macro definition set, including the
         #     new definition
+        (n,v) = xxx_todo_changeme2
         nmacro    = copy.deepcopy(self.macros)
         nmacro[n] = v
         # (2) transform into a graph:
         #       name => [list, of, entities]
         #     (for each macro, compile the list of 
         #      macro names that are found in the value)
-        def reductor(acc, (k,v)):
-            acc[k] = filter(lambda txt: re.search(wordmatch(txt), v), nmacro.keys())
+        def reductor(acc, xxx_todo_changeme):
+            (k,v) = xxx_todo_changeme
+            acc[k] = [txt for txt in list(nmacro.keys()) if re.search(wordmatch(txt), v)]
             return acc
-        graph = reduce(reductor, nmacro.iteritems(), {})
+        graph = reduce(reductor, iter(nmacro.items()), {})
         # (3) detect cycles
         if hvutil.cycle_detect(graph):
-            raise SyntaxError,"The macro definition '{0} => {1}' would create a loop in macroexpansion!".format(n, v)
+            raise SyntaxError("The macro definition '{0} => {1}' would create a loop in macroexpansion!".format(n, v))
         #      ...
         # (5) Profit!
         self.macros = nmacro
@@ -484,7 +487,7 @@ class CommandLineInterface:
         if x in self.macros:
             del self.macros[x]
             self.storeMacros()
-            print "deleted macro '{0}'".format(x)
+            print("deleted macro '{0}'".format(x))
 
     def parseOneCmd(self, txt):
         # strip whitespaces at the end and perform macrosubstitutions
@@ -543,16 +546,16 @@ class CommandLineInterface:
         txts  = []
         if not args:
             # display the first two lines of helptext for every command
-            txts = map(lambda x: hvutil.strcut(x.hlp, 2, '\n') if hasattr(x, "hlp") else nohlp(x), self.commands)
+            txts = [hvutil.strcut(x.hlp, 2, '\n') if hasattr(x, "hlp") else nohlp(x) for x in self.commands]
         else:
             def txt(c):
                 try:
-                    [cmd] = filter(lambda x:x.id==c, self.commands)
+                    [cmd] = [x for x in self.commands if x.id==c]
                     # display full help for command if available
                     return cmd.hlp if hasattr(cmd, "hlp") else nohlp(c)
                 except ValueError:
                     return "{0} - no help for unknown command".format(c)
-            txts = map(txt, args) 
+            txts = list(map(txt, args)) 
         maybePage( txts )
 
     def macro(self, args, **kwargs):
@@ -562,12 +565,12 @@ class CommandLineInterface:
         # three cases: len(args)==0 => just the 'macro' command, list all macros
         parts = hvutil.escape_split(args)
         if len(parts)>2:
-            raise RuntimeError,"internal error - too many arguments to 'macro' command"
+            raise RuntimeError("internal error - too many arguments to 'macro' command")
         def p(x):
-            print x
+            print(x)
         if len(parts)==0:
             # display all macro definitions
-            map(lambda (k,v): p("{0} => '{1}'".format(k,v)), self.macros.iteritems())
+            list(map(lambda k_v: p("{0} => '{1}'".format(k_v[0],k_v[1])), iter(self.macros.items())))
         elif len(parts)==1:
             # display the definition of macro 'xxx' (if any)
             try:
@@ -579,7 +582,7 @@ class CommandLineInterface:
             # make sure no command of that name exists
             for cmd in self.commands:
                 if cmd.rx.match(parts[0]):
-                    raise RuntimeError,"'{0}' already exists as command".format(parts[0])
+                    raise RuntimeError("'{0}' already exists as command".format(parts[0]))
             self.addMacro( (parts[0], parts[1]) )
             if verbose:
                 p(parts[0]+" => "+parts[1])
@@ -588,7 +591,7 @@ class CommandLineInterface:
     def runShell(self, s):
         exitcode = os.system(s)
         if exitcode!=0:
-            raise RuntimeError, "'{0}' exited with code {1}".format(s, exitcode)
+            raise RuntimeError("'{0}' exited with code {1}".format(s, exitcode))
 
     def _exit(self):
         self.exit = True
@@ -610,7 +613,7 @@ class CommandLineInterface:
         # stop if the output is the same as the input
         while True:
             otext = copy.deepcopy(txt)
-            txt = reduce(lambda acc, (n,v): re.sub(wordmatch(n), v, acc), self.macros.iteritems(), txt)
+            txt = reduce(lambda acc, (n,v): re.sub(wordmatch(n), v, acc), iter(self.macros.items()), txt)
             if txt==otext:
                 break
         return txt
@@ -630,7 +633,7 @@ class CommandLineInterface:
         if not self.app:
             return
         mfn = os.path.join( os.getenv('HOME'), ".{0}.macros".format(self.app))
-        mf  = reduce(lambda acc, (n,v): acc.write("{0} '{1}'\n".format(n, v)) or acc, self.macros.iteritems(), open(mfn, 'w'))
+        mf  = reduce(lambda acc, (n,v): acc.write("{0} '{1}'\n".format(n, v)) or acc, iter(self.macros.items()), open(mfn, 'w'))
         mf.close()
 
 
@@ -655,18 +658,14 @@ def maybePage(lst):
         # count the number of lines the text would use up on the screen
         # (taking care of lines longer than the terminal width)
         doPage = sum( \
-            map(lambda x: \
-                sum( map(lambda y: \
-                          int(math.ceil(float(len(y) if len(y) else 1)/float(screenSize[1]))), x.split('\n') \
-                    ) \
-                ), lst \
-            )) > screenSize[0]
+            [sum( [int(math.ceil(float(len(y) if len(y) else 1)/float(screenSize[1]))) for y in x.split('\n')] \
+                ) for x in lst]) > screenSize[0]
     if doPage or not screenSize:
         pydoc.pager("\n".join(lst))
     else:
         def p(x):
-            print x
-        map(p, lst)
+            print(x)
+        list(map(p, lst))
 
 
 hlp_macro = \
